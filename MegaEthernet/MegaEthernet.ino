@@ -9,27 +9,42 @@
 //Pin 2 reservé pour une sonde de temperature onewire
 //Pin 3 à 9 libre
 //Pin 10 à 13 reservé pour le shield ethernet
-//Pin 14 à 50 reservé pour l utilisation de relais avec sauvegarde de l etat
+//Pin 14 à 40 reservé pour l utilisation de relais avec sauvegarde de l etat
+//Pin 41 à 50 reservé en input avec sauvegarde de l etat
 
 
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168, 10, 178);
 EthernetServer server(80);
+// Initialize the Ethernet client library
+// with the IP address and port of the server
+// that you want to connect to (port 80 is default for HTTP):
+EthernetClient client;
 String EepromValues;
 
 OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
 const byte TELEINFO_PIN = 3;   //Connexion TELEINFO
 
-char domoticz_server[] = "192.168.10.37:8080";               // Adresse du server Domoticz
+char domoticz_IP = "192.168.10.37";               // Adresse du server Domoticz
+char domoticz_Port = "8080";
 char TempIdx= "72";
 char EDFIdx= "73";
-
+char Din1Idx="74";
+char Din2Idx="75";
+char Din4Idx="76";
+char Din5Idx="77";
+char Din6Idx="78";
+char Din7Idx="79";
+char Din8Idx="80";
+char Din9Idx="81";
+char Din10Idx="82";
 
 
 unsigned long currentMillis = 0;    // stores the value of millis() in each iteration of loop()
+unsigned long lastMillis = 0;
 const int TempInterval = 10000; // number of millisecs between ds18b20 readings and uploading to domoticz
-
+unsigned long lastsend = 0;
 
 String toString(float value, byte decimals) {
   String sValue = String(value, decimals);
@@ -97,12 +112,18 @@ void setup() {
 //paramétrage des pin digital en output pour radiateur et relay en Low par defaut
 
     String mode ="";
-    for (int i=14;i<51;i++) {
+    for (int i=14;i<41;i++) {
     mode = EEPROMvalues.substring(i-14,i-13);
     pinMode(i, OUTPUT);
     if (mode=="1") {digitalWrite(i, HIGH);}
     if (mode=="0") {digitalWrite(i, LOW);}
 
+    }
+
+//paramétrage des pin digital en input pour contacteur ouverture porte/fenetre
+
+    for (int i=41;i<51;i++) {
+      pinMode(i, INPUT);
     }
 
   // start the Ethernet connection and the server:
@@ -142,12 +163,20 @@ void receivedata() {
         s +=state;
       }     
       client.println(s);
+      for (int digitChannel = 0; digitChannel < 16; digitChannel++) {
+        int DigitSensorReading = digitalRead(digitChannel);
+        client.print("<br>A-In");
+        client.print(digitChannel);
+        client.print(":");
+        client.println(DigitSensorReading);
+      }
+      
       for (int analogChannel = 0; analogChannel < 16; analogChannel++) {
-        int sensorReading = analogRead(analogChannel);
+        int AnaSensorReading = analogRead(analogChannel);
         client.print("<br>A-In");
         client.print(analogChannel);
         client.print(":");
-        client.println(sensorReading);
+        client.println(AnaSensorReading);
       }
       client.println("</html>\r\n\r\n");
       break;
@@ -163,10 +192,10 @@ void receivedata() {
         Serial.println(command);
         if (command == "reset") {
           Serial.println("Reset EEPROM to off");
-          for (int i=14;i<51;i++) { digitalWrite(i, HIGH); }
+          for (int i=14;i<41;i++) { digitalWrite(i, HIGH); }
           clearEEPROM();
         }   
-        for (int i=14;i<51;i++) { 
+        for (int i=14;i<41;i++) { 
           String Tmp = toString(i,0);
           Tmp += "on";
           if (command == Tmp)
@@ -307,9 +336,43 @@ String temperature() {
   return toString(celsius,2);
 }
 
+
+void SendToDomoticz()
+{
+// Domoticz format /json.htm?type=command&param=udevice&idx=IDX&nvalue=0&svalue=TEMP
+
+if (client.connect(domoticz_IP,domoticz_Port)) {
+  
+    client.print("GET /json.htm?type=command&param=udevice&idx=");
+    client.print(TempIdx);
+    client.print("&nvalue=0&svalue=");
+    client.print(temperature());
+    client.print(";");
+    client.println(" HTTP/1.1");
+    client.print("Host: ");
+    client.print(domoticz_IP);
+    client.print(":");
+    client.println(domoticz_Port);
+    client.println("User-Agent: Arduino-ethernet");
+    client.println("Connection: close");
+    client.println();
+    client.stop();
+    }
+}
+
+
+
+
 void loop() {
   
   currentMillis = millis();   // capture the latest value of millis()
+  lastsend = currentMillis - lastMillis;
+  if (lastsend > TempInterval)
+  {
+   SendToDomoticz();
+
+    
+  }
   
   // listen for incoming clients
   receivedata();
