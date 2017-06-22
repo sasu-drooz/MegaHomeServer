@@ -15,7 +15,7 @@
 
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192, 168, 10, 178);
+IPAddress ip(192, 168, 10, 177);
 EthernetServer server(80);
 // Initialize the Ethernet client library
 // with the IP address and port of the server
@@ -26,9 +26,9 @@ String EepromValues;
 OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
 const byte TELEINFO_PIN = 3;   //Connexion TELEINFO
 
-char domoticz_IP = "192.168.10.37";               // Adresse du server Domoticz
+char domoticz_IP = "192.168.10.28";               // Adresse du server Domoticz
 char domoticz_Port = "8080";
-char TempIdx= "72";
+char TempIdx= "31";
 char EDFIdx= "73";
 char Din1Idx="74";
 char Din2Idx="75";
@@ -41,10 +41,10 @@ char Din9Idx="81";
 char Din10Idx="82";
 
 
-unsigned long currentMillis = 0;    // stores the value of millis() in each iteration of loop()
-unsigned long lastMillis = 0;
-const int TempInterval = 10000; // number of millisecs between ds18b20 readings and uploading to domoticz
-unsigned long lastsend = 0;
+unsigned long old_time;
+unsigned long new_time;
+unsigned long intervaltime;
+unsigned long period = 60000;  // delai de 60sec
 
 String toString(float value, byte decimals) {
   String sValue = String(value, decimals);
@@ -154,7 +154,7 @@ void receivedata() {
       String TempC=temperature();
       s += "<br>Temperature : ";
       s += TempC;
-      for (int i=14;i<51;i++) { 
+      for (int i=14;i<41;i++) { 
         String x =toString(i,0);   
         s += "</br>D-out";
         s +=x;
@@ -163,9 +163,9 @@ void receivedata() {
         s +=state;
       }     
       client.println(s);
-      for (int digitChannel = 0; digitChannel < 16; digitChannel++) {
+      for (int digitChannel = 41; digitChannel < 51; digitChannel++) {
         int DigitSensorReading = digitalRead(digitChannel);
-        client.print("<br>A-In");
+        client.print("<br>D-In");
         client.print(digitChannel);
         client.print(":");
         client.println(DigitSensorReading);
@@ -342,7 +342,7 @@ void SendToDomoticz()
 // Domoticz format /json.htm?type=command&param=udevice&idx=IDX&nvalue=0&svalue=TEMP
 
 if (client.connect(domoticz_IP,domoticz_Port)) {
-  
+    Serial.println("Send temperature to domoticz");
     client.print("GET /json.htm?type=command&param=udevice&idx=");
     client.print(TempIdx);
     client.print("&nvalue=0&svalue=");
@@ -365,12 +365,16 @@ if (client.connect(domoticz_IP,domoticz_Port)) {
 
 void loop() {
   
-  currentMillis = millis();   // capture the latest value of millis()
-  lastsend = currentMillis - lastMillis;
-  if (lastsend > TempInterval)
+   new_time = millis();
+   Serial.println(new_time - old_time);
+   intervaltime = new_time - old_time;
+   
+   
+  if (intervaltime > period)
   {
-   SendToDomoticz();
-
+   // SendToDomoticz();
+   old_time = new_time;
+   Serial.println("envoie vers domoticz");
     
   }
   
