@@ -28,17 +28,17 @@ const byte TELEINFO_PIN = 3;   //Connexion TELEINFO
 
 char domoticz_IP = "192.168.10.28";               // Adresse du server Domoticz
 char domoticz_Port = "8080";
-char TempIdx= "31";
-char EDFIdx= "73";
-char Din1Idx="74";
-char Din2Idx="75";
-char Din4Idx="76";
-char Din5Idx="77";
-char Din6Idx="78";
-char Din7Idx="79";
-char Din8Idx="80";
-char Din9Idx="81";
-char Din10Idx="82";
+String TempIdx= "31";
+String EDFIdx= "73";
+String Din1Idx="74";
+String Din2Idx="75";
+String Din4Idx="76";
+String Din5Idx="77";
+String Din6Idx="78";
+String Din7Idx="79";
+String Din8Idx="80";
+String Din9Idx="81";
+String Din10Idx="82";
 
 
 unsigned long old_time;
@@ -341,12 +341,16 @@ void SendToDomoticz()
 {
 // Domoticz format /json.htm?type=command&param=udevice&idx=IDX&nvalue=0&svalue=TEMP
 
-if (client.connect(domoticz_IP,domoticz_Port)) {
+    client.connect(domoticz_IP,domoticz_Port);
     Serial.println("Send temperature to domoticz");
     client.print("GET /json.htm?type=command&param=udevice&idx=");
+    Serial.print("GET /json.htm?type=command&param=udevice&idx=");
     client.print(TempIdx);
+    Serial.print(TempIdx);
     client.print("&nvalue=0&svalue=");
+    Serial.print("&nvalue=0&svalue=");
     client.print(temperature());
+    Serial.println(temperature());
     client.print(";");
     client.println(" HTTP/1.1");
     client.print("Host: ");
@@ -357,7 +361,6 @@ if (client.connect(domoticz_IP,domoticz_Port)) {
     client.println("Connection: close");
     client.println();
     client.stop();
-    }
 }
 
 
@@ -366,13 +369,13 @@ if (client.connect(domoticz_IP,domoticz_Port)) {
 void loop() {
   
    new_time = millis();
-   Serial.println(new_time - old_time);
+   //Serial.println(new_time - old_time);
    intervaltime = new_time - old_time;
    
    
   if (intervaltime > period)
   {
-   // SendToDomoticz();
+   SendToDomoticz();
    old_time = new_time;
    Serial.println("envoie vers domoticz");
     
