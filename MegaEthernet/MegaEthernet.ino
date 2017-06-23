@@ -20,14 +20,14 @@ EthernetServer server(80);
 // Initialize the Ethernet client library
 // with the IP address and port of the server
 // that you want to connect to (port 80 is default for HTTP):
-EthernetClient client;
+EthernetClient getclient;
 String EepromValues;
 
 OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
 const byte TELEINFO_PIN = 3;   //Connexion TELEINFO
 
-char domoticz_IP = "192.168.10.28";               // Adresse du server Domoticz
-char domoticz_Port = "8080";
+char domoticz_IP[] = "192.168.10.28";               // Adresse du server Domoticz
+char domoticz_Port[] = "8080";
 String TempIdx= "31";
 String EDFIdx= "73";
 String Din1Idx="74";
@@ -106,6 +106,8 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }  
+  delay(1000);
+  
   String EEPROMvalues=readEEPROM(0,36);
   Serial.println(EEPROMvalues);
   
@@ -113,11 +115,10 @@ void setup() {
 
     String mode ="";
     for (int i=14;i<41;i++) {
-    mode = EEPROMvalues.substring(i-14,i-13);
-    pinMode(i, OUTPUT);
-    if (mode=="1") {digitalWrite(i, HIGH);}
-    if (mode=="0") {digitalWrite(i, LOW);}
-
+      mode = EEPROMvalues.substring(i-14,i-13);
+      pinMode(i, OUTPUT);
+      if (mode=="1") {digitalWrite(i, HIGH);}
+      if (mode=="0") {digitalWrite(i, LOW);}
     }
 
 //paramétrage des pin digital en input pour contacteur ouverture porte/fenetre
@@ -340,27 +341,40 @@ String temperature() {
 void SendToDomoticz()
 {
 // Domoticz format /json.htm?type=command&param=udevice&idx=IDX&nvalue=0&svalue=TEMP
-
-    client.connect(domoticz_IP,domoticz_Port);
+  getclient.stop();
+  if (getclient.connect(domoticz_IP, domoticz_Port)) {
+    Serial.println("connecting...");
+    String TempC=temperature();
+    //String TempC="33";
+    getclient.connect(domoticz_IP,domoticz_Port);
     Serial.println("Send temperature to domoticz");
-    client.print("GET /json.htm?type=command&param=udevice&idx=");
+    getclient.print("GET /json.htm?type=command&param=udevice&idx=");
     Serial.print("GET /json.htm?type=command&param=udevice&idx=");
-    client.print(TempIdx);
+    getclient.print(TempIdx);
     Serial.print(TempIdx);
-    client.print("&nvalue=0&svalue=");
+    getclient.print("&nvalue=0&svalue=");
     Serial.print("&nvalue=0&svalue=");
-    client.print(temperature());
-    Serial.println(temperature());
-    client.print(";");
-    client.println(" HTTP/1.1");
-    client.print("Host: ");
-    client.print(domoticz_IP);
-    client.print(":");
-    client.println(domoticz_Port);
-    client.println("User-Agent: Arduino-ethernet");
-    client.println("Connection: close");
-    client.println();
-    client.stop();
+    getclient.print(TempC);
+    Serial.println(TempC);
+    getclient.print(";");
+    getclient.println(" HTTP/1.1");
+    getclient.print("Host: ");
+    getclient.print(domoticz_IP);
+    getclient.print(":");
+    getclient.println(domoticz_Port);
+    getclient.println("User-Agent: Arduino-ethernet");
+    getclient.println("Connection: close");
+    getclient.println();
+  } else {
+    // if you couldn't make a connection:
+    Serial.println("connection failed");
+  }
+
+
+
+
+
+
 }
 
 
@@ -375,9 +389,9 @@ void loop() {
    
   if (intervaltime > period)
   {
+   Serial.println("envoie vers domoticz");
    SendToDomoticz();
    old_time = new_time;
-   Serial.println("envoie vers domoticz");
     
   }
   
