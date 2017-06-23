@@ -16,18 +16,20 @@
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168, 10, 177);
+IPAddress gateway(192,168,10,254); // internet access via router
+IPAddress subnet(255,255,255,0); //subnet mask
 EthernetServer server(80);
 // Initialize the Ethernet client library
 // with the IP address and port of the server
 // that you want to connect to (port 80 is default for HTTP):
-EthernetClient getclient;
+EthernetClient client;
 String EepromValues;
 
 OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
 const byte TELEINFO_PIN = 3;   //Connexion TELEINFO
 
-char domoticz_IP[] = "192.168.10.28";               // Adresse du server Domoticz
-char domoticz_Port[] = "8080";
+IPAddress domoticz_IP(192, 168 ,10 , 28);               // Adresse du server Domoticz
+IPAddress domoticz_Port(8080);
 String TempIdx= "31";
 String EDFIdx= "73";
 String Din1Idx="74";
@@ -44,7 +46,7 @@ String Din10Idx="82";
 unsigned long old_time;
 unsigned long new_time;
 unsigned long intervaltime;
-unsigned long period = 60000;  // delai de 60sec
+unsigned long period = 6000;  // delai de 6sec
 
 String toString(float value, byte decimals) {
   String sValue = String(value, decimals);
@@ -128,7 +130,7 @@ void setup() {
     }
 
   // start the Ethernet connection and the server:
-  Ethernet.begin(mac, ip);
+  Ethernet.begin(mac, ip, subnet, gateway);
   server.begin();
   Serial.print("server is at ");
   Serial.println(Ethernet.localIP());
@@ -341,30 +343,29 @@ String temperature() {
 void SendToDomoticz()
 {
 // Domoticz format /json.htm?type=command&param=udevice&idx=IDX&nvalue=0&svalue=TEMP
-  getclient.stop();
-  if (getclient.connect(domoticz_IP, domoticz_Port)) {
+  client.stop();
+  if (client.connect(domoticz_IP, domoticz_Port)) {
     Serial.println("connecting...");
     String TempC=temperature();
     //String TempC="33";
-    getclient.connect(domoticz_IP,domoticz_Port);
     Serial.println("Send temperature to domoticz");
-    getclient.print("GET /json.htm?type=command&param=udevice&idx=");
+    client.print("GET /json.htm?type=command&param=udevice&idx=");
     Serial.print("GET /json.htm?type=command&param=udevice&idx=");
-    getclient.print(TempIdx);
+    client.print(TempIdx);
     Serial.print(TempIdx);
-    getclient.print("&nvalue=0&svalue=");
+    client.print("&nvalue=0&svalue=");
     Serial.print("&nvalue=0&svalue=");
-    getclient.print(TempC);
+    client.print(TempC);
     Serial.println(TempC);
-    getclient.print(";");
-    getclient.println(" HTTP/1.1");
-    getclient.print("Host: ");
-    getclient.print(domoticz_IP);
-    getclient.print(":");
-    getclient.println(domoticz_Port);
-    getclient.println("User-Agent: Arduino-ethernet");
-    getclient.println("Connection: close");
-    getclient.println();
+    client.print(";");
+    client.println(" HTTP/1.1");
+    client.print("Host: ");
+    client.print(domoticz_IP);
+    client.print(":");
+    client.println(domoticz_Port);
+    client.println("User-Agent: Arduino-ethernet");
+    client.println("Connection: close");
+    client.println();
   } else {
     // if you couldn't make a connection:
     Serial.println("connection failed");
