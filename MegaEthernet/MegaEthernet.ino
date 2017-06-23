@@ -46,7 +46,7 @@ String Din10Idx="82";
 unsigned long old_time;
 unsigned long new_time;
 unsigned long intervaltime;
-unsigned long period = 6000;  // delai de 6sec
+unsigned long period = 60000;  // delai de 60sec
 
 String toString(float value, byte decimals) {
   String sValue = String(value, decimals);
