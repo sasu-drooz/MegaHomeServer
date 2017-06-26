@@ -34,13 +34,14 @@ String TempIdx= "31";
 //String EDFIdx= "73";
 String Din1Idx="74";
 String Din2Idx="75";
-String Din4Idx="76";
-String Din5Idx="77";
-String Din6Idx="78";
-String Din7Idx="79";
-String Din8Idx="80";
-String Din9Idx="81";
-String Din10Idx="82";
+String Din3Idx="76";
+String Din4Idx="77";
+String Din5Idx="78";
+String Din6Idx="79";
+String Din7Idx="80";
+String Din8Idx="81";
+String Din9Idx="82";
+String Din10Idx="83";
 
 
 unsigned long old_time;
@@ -396,11 +397,14 @@ void loop() {
     String TempC=temperature();
     //if TempC 
    SendToDomoticz(TempIdx, "0", TempC );
-   
-   SendToDomoticz(Din1Idx, "0", digitalRead(41) );
-   SendToDomoticz(Din2Idx, "0", digitalRead(42) );
-   SendToDomoticz(Din3Idx, "0", digitalRead(43) );
-   SendToDomoticz(Din4Idx, "0", digitalRead(44) );
+   int digit1in=digitalRead(41);
+   SendToDomoticz(Din1Idx, "0", String(digit1in) );
+   int digit2in=digitalRead(42);
+   SendToDomoticz(Din2Idx, "0", String(digit2in) );
+   int digit3in=digitalRead(43);
+   SendToDomoticz(Din3Idx, "0", String(digit3in) );
+   int digit4in=digitalRead(44);
+   SendToDomoticz(Din4Idx, "0", String(digit4in) );
 
    old_time = new_time;
     
