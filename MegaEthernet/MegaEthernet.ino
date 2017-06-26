@@ -15,7 +15,7 @@
 
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192, 168, 10, 177);
+IPAddress ip(192, 168, 10, 178);
 IPAddress gateway(192,168,10,254); // internet access via router
 IPAddress subnet(255,255,255,0); //subnet mask
 EthernetServer server(80);
@@ -31,7 +31,7 @@ const byte TELEINFO_PIN = 3;   //Connexion TELEINFO
 IPAddress domoticz_IP(192, 168 ,10 , 28);               // Adresse du server Domoticz
 IPAddress domoticz_Port(8080);
 String TempIdx= "31";
-String EDFIdx= "73";
+//String EDFIdx= "73";
 String Din1Idx="74";
 String Din2Idx="75";
 String Din4Idx="76";
@@ -340,23 +340,25 @@ String temperature() {
 }
 
 
-void SendToDomoticz()
+void SendToDomoticz(String idx, String nvalue, String svalue)
 {
 // Domoticz format /json.htm?type=command&param=udevice&idx=IDX&nvalue=0&svalue=TEMP
   client.stop();
   if (client.connect(domoticz_IP, domoticz_Port)) {
     Serial.println("connecting...");
-    String TempC=temperature();
-    //String TempC="33";
     Serial.println("Send temperature to domoticz");
     client.print("GET /json.htm?type=command&param=udevice&idx=");
     Serial.print("GET /json.htm?type=command&param=udevice&idx=");
-    client.print(TempIdx);
-    Serial.print(TempIdx);
-    client.print("&nvalue=0&svalue=");
-    Serial.print("&nvalue=0&svalue=");
-    client.print(TempC);
-    Serial.println(TempC);
+    client.print(idx);
+    Serial.print(idx);
+    client.print("&nvalue=");
+    Serial.print("&nvalue=");
+    client.print(nvalue);
+    Serial.println(nvalue);
+    client.print("&svalue=");
+    Serial.print("&svalue=");
+    client.print(svalue);
+    Serial.println(svalue);
     client.print(";");
     client.println(" HTTP/1.1");
     client.print("Host: ");
@@ -391,7 +393,15 @@ void loop() {
   if (intervaltime > period)
   {
    Serial.println("envoie vers domoticz");
-   SendToDomoticz();
+    String TempC=temperature();
+    //if TempC 
+   SendToDomoticz(TempIdx, "0", TempC );
+   
+   SendToDomoticz(Din1Idx, "0", digitalRead(41) );
+   SendToDomoticz(Din2Idx, "0", digitalRead(42) );
+   SendToDomoticz(Din3Idx, "0", digitalRead(43) );
+   SendToDomoticz(Din4Idx, "0", digitalRead(44) );
+
    old_time = new_time;
     
   }
