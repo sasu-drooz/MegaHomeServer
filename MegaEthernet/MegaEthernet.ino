@@ -398,13 +398,13 @@ void loop() {
     //if TempC 
    SendToDomoticz(TempIdx, "0", TempC );
    int digit1in=digitalRead(41);
-   SendToDomoticz(Din1Idx, "0", String(digit1in) );
+   SendToDomoticz(Din1Idx, String(digit1in), "0");
    int digit2in=digitalRead(42);
-   SendToDomoticz(Din2Idx, "0", String(digit2in) );
+   SendToDomoticz(Din2Idx, String(digit2in), "0");
    int digit3in=digitalRead(43);
-   SendToDomoticz(Din3Idx, "0", String(digit3in) );
+   SendToDomoticz(Din3Idx, String(digit3in), "0");
    int digit4in=digitalRead(44);
-   SendToDomoticz(Din4Idx, "0", String(digit4in) );
+   SendToDomoticz(Din4Idx, String(digit4in), "0");
 
    old_time = new_time;
     
