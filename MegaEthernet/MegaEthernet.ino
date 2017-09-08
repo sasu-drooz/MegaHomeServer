@@ -12,19 +12,10 @@
 //Pin 14 à 40 reservé pour l utilisation de relais avec sauvegarde de l etat
 //Pin 41 à 50 reservé en input avec sauvegarde de l etat
 
-
-
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168, 10, 178);
 IPAddress gateway(192,168,10,254); // internet access via router
 IPAddress subnet(255,255,255,0); //subnet mask
-EthernetServer server(80);
-// Initialize the Ethernet client library
-// with the IP address and port of the server
-// that you want to connect to (port 80 is default for HTTP):
-EthernetClient client;
-String EepromValues;
-
 OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
 const byte TELEINFO_PIN = 3;   //Connexion TELEINFO
 
@@ -44,10 +35,18 @@ String Din9Idx="82";
 String Din10Idx="83";
 
 
+
+//##########################################################################################
+EthernetServer server(80);
+// Initialize the Ethernet client library
+// with the IP address and port of the server
+// that you want to connect to (port 80 is default for HTTP):
+EthernetClient client;
+String EepromValues;
 unsigned long old_time;
 unsigned long new_time;
 unsigned long intervaltime;
-unsigned long period = 60000;  // delai de 60sec
+unsigned long period = 600000;  // delai de 600sec
 
 String toString(float value, byte decimals) {
   String sValue = String(value, decimals);
@@ -139,104 +138,139 @@ void setup() {
 
 void receivedata() {
   EthernetClient client = server.available();
-    if (client) {
-    Serial.println("new client");
-  String line;
-  String command;
-  //String type;
-    // an http request ends with a blank line
-    boolean currentLineIsBlank = true;
-
-  
-    while (client.connected()) {
-      if (client.available()) {
-        char c = client.read();
-    line +=c;
-        if (c == '\n' && currentLineIsBlank) {
-      String s;
-      s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>Hello from MegaHomeServer <br><br>";
-      String TempC=temperature();
-      s += "<br>Temperature : ";
-      s += TempC;
-      for (int i=14;i<41;i++) { 
-        String x =toString(i,0);   
-        s += "</br>D-out";
-        s +=x;
-        s +=":";
-        String state = toString(digitalRead(i),0);
-        s +=state;
-      }     
-      client.println(s);
-      for (int digitChannel = 41; digitChannel < 51; digitChannel++) {
-        int DigitSensorReading = digitalRead(digitChannel);
-        client.print("<br>D-In");
-        client.print(digitChannel);
-        client.print(":");
-        client.println(DigitSensorReading);
-      }
-      
-      for (int analogChannel = 0; analogChannel < 16; analogChannel++) {
-        int AnaSensorReading = analogRead(analogChannel);
-        client.print("<br>A-In");
-        client.print(analogChannel);
-        client.print(":");
-        client.println(AnaSensorReading);
-      }
-      client.println("</html>\r\n\r\n");
-      break;
+  if (client) 
+    {
+      Serial.println("new client");
+      String line;
+      String command;
+      //String type;
+      // an http request ends with a blank line
+      boolean currentLineIsBlank = true;
+      while (client.connected()) 
+        {
+          if (client.available()) 
+            {
+              char c = client.read();
+              line +=c;
+              if (c == '\n' && currentLineIsBlank) 
+                {
+                  String s=WriteAccueil();
+                  client.println(s);
+                  break;
+                }
+              if (c == '\n') 
+                {
+                  // you're starting a new line
+                  String tmpline = "";
+                  tmpline = line.substring(4,line.indexOf('=')+1);
+                  if (tmpline == "/a?command=") 
+                    {
+                      String s=GetCommand(line);
+                      client.println(s);
+                      break;
+                    }
+                  currentLineIsBlank = true;
+                  line ="";
+                } 
+              else if (c != '\r') 
+                {
+                  // you've gotten a character on the current line
+                  currentLineIsBlank = false;
+                  
+                }
+            }
         }
-        if (c == '\n') {
-        // you're starting a new line
-      String tmpline = "";
-      tmpline = line.substring(4,line.indexOf('=')+1);
-      if (tmpline == "/a?command=") {
-        command = line.substring(line.lastIndexOf('=')+1);
-        command = command.substring(0,command.lastIndexOf(' '));
-        Serial.print ("command : ");
-        Serial.println(command);
-        if (command == "reset") {
-          Serial.println("Reset EEPROM to off");
-          for (int i=14;i<41;i++) { digitalWrite(i, HIGH); }
-          clearEEPROM();
-        }   
-        for (int i=14;i<41;i++) { 
-          String Tmp = toString(i,0);
-          Tmp += "on";
-          if (command == Tmp)
-          {
-             digitalWrite(i, LOW); // on
-             Serial.print("pin ");
-             Serial.print(i);
-             Serial.println(" on ");
-             //Serial.println(type);
-          }
-          Tmp =  toString(i,0);
-          Tmp += "off";
-          if (command == Tmp)
-          {
-             digitalWrite(i, HIGH); // off
-             Serial.print("pin ");
-             Serial.print(i);
-             Serial.println(" off ");
-             //Serial.println(type);
-          }
-        }
-        SaveToEEPROM ();
-        }
-        currentLineIsBlank = true;
-        line ="";
-        } else if (c != '\r') {
-          // you've gotten a character on the current line
-          currentLineIsBlank = false;
-        }
-      }
+      // give the web browser time to receive the data
+      delay(1);
+      // close the connection:
+      client.stop();
+      Serial.println("client disconnected");
     }
-    // give the web browser time to receive the data
-    delay(1);
-    // close the connection:
-    client.stop();
-    Serial.println("client disconnected");
+}
+
+
+String GetCommand(String line) {
+  String command;
+  String s;
+  command = line.substring(line.lastIndexOf('=')+1);
+  command = command.substring(0,command.lastIndexOf(' '));
+  Serial.print ("command : ");
+  Serial.println(command);
+  if (command == "Reset") 
+  {
+    Serial.println("Reset EEPROM to off");
+    for (int i=14;i<51;i++) { digitalWrite(i, HIGH); }
+    clearEEPROM();
+  s = "<H1>Config Reset</H1>";
+  }   
+  if (command == "Config") 
+  {
+  s=WriteConf();
+  }      
+  if (command == "") 
+  {
+  s=WriteAccueil();
+  }   
+  for (int i=14;i<51;i++) 
+  { 
+    String Tmp = toString(i,0);
+    Tmp += "on";
+    if (command == Tmp)
+  {
+     digitalWrite(i, LOW); // on
+     Serial.print("pin ");
+     Serial.print(i);
+     Serial.println(" on ");
+     //Serial.println(type);
+     s = Tmp;
   }
+    Tmp =  toString(i,0);
+    Tmp += "off";
+    if (command == Tmp)
+    {
+     digitalWrite(i, HIGH); // off
+     Serial.print("pin ");
+     Serial.print(i);
+     Serial.println(" off ");
+     //Serial.println(type);
+     s = Tmp;
+    }
+  }
+  SaveToEEPROM ();
+  return s;
+}
+
+String WriteAccueil() {
+  String s;
+  s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>Hello from MegaHomeServer <br><br>";
+  String TempC=temperature();
+  s += "<br>Temperature : ";
+  s += TempC;
+  for (int i=14;i<51;i++) { 
+    String x =toString(i,0);   
+    s += "</br>D-out";
+    s +=x;
+    s +=":";
+    String state = toString(digitalRead(i),0);
+    s +=state;
+  }
+  for (int analogChannel = 0; analogChannel < 16; analogChannel++) {
+    int sensorReading = analogRead(analogChannel);
+    s +="<br>A-In";
+    s +=analogChannel;
+    s +=":";
+    s +=sensorReading;
+  }
+  s +="</html>\r\n\r\n";
+  return s;
+}
+
+String WriteConf() {
+  String s;
+  s = "<H1>Hello from Conf sheet of MegaHomeServer <br><br>";
+ 
+  s +="</H1>\r\n\r\n";
+  return s;
 }
 
 String temperature() {
@@ -249,44 +283,12 @@ String temperature() {
   String result;
   
   if ( !ds.search(addr)) {
-    Serial.println("No more addresses.");
-    Serial.println();
     ds.reset_search();
     delay(250);
   result = "DS18B20 absent";
     return result;
   }
-  
-  Serial.print("ROM =");
-  for( i = 0; i < 8; i++) {
-    Serial.write(' ');
-    Serial.print(addr[i], HEX);
-  }
 
-  if (OneWire::crc8(addr, 7) != addr[7]) {
-      Serial.println("CRC is not valid!");
-      return;
-  }
-  Serial.println();
- 
-  // the first ROM byte indicates which chip
-  switch (addr[0]) {
-    case 0x10:
-      Serial.println("  Chip = DS18S20");  // or old DS1820
-      type_s = 1;
-      break;
-    case 0x28:
-      Serial.println("  Chip = DS18B20");
-      type_s = 0;
-      break;
-    case 0x22:
-      Serial.println("  Chip = DS1822");
-      type_s = 0;
-      break;
-    default:
-      Serial.println("Device is not a DS18x20 family device.");
-      return;
-  } 
 
   ds.reset();
   ds.select(addr);
@@ -299,17 +301,9 @@ String temperature() {
   ds.select(addr);    
   ds.write(0xBE);         // Read Scratchpad
 
-  Serial.print("  Data = ");
-  Serial.print(present, HEX);
-  Serial.print(" ");
   for ( i = 0; i < 9; i++) {           // we need 9 bytes
     data[i] = ds.read();
-    Serial.print(data[i], HEX);
-    Serial.print(" ");
   }
-  Serial.print(" CRC=");
-  Serial.print(OneWire::crc8(data, 8), HEX);
-  Serial.println();
 
   // Convert the data to actual temperature
   // because the result is a 16 bit signed integer, it should
@@ -331,12 +325,6 @@ String temperature() {
     //// default is 12 bit resolution, 750 ms conversion time
   }
   celsius = (float)raw / 16.0;
-  fahrenheit = celsius * 1.8 + 32.0;
-  Serial.print("  Temperature = ");
-  Serial.print(celsius);
-  Serial.print(" Celsius, ");
-  Serial.print(fahrenheit);
-  Serial.println(" Fahrenheit");
   return toString(celsius,2);
 }
 
@@ -382,7 +370,21 @@ void SendToDomoticz(String idx, String nvalue, String svalue)
 }
 
 
+void HeartBeat() {
+  Serial.println("envoie vers domoticz");
+    String TempC=temperature();
+    //if TempC 
+   //SendToDomoticz(TempIdx, "0", TempC );
+   int digit1in=digitalRead(41);
+   //SendToDomoticz(Din1Idx, String(digit1in), "0");
+   int digit2in=digitalRead(42);
+   //SendToDomoticz(Din2Idx, String(digit2in), "0");
+   int digit3in=digitalRead(43);
+   //SendToDomoticz(Din3Idx, String(digit3in), "0");
+   int digit4in=digitalRead(44);
+   //SendToDomoticz(Din4Idx, String(digit4in), "0");
 
+}
 
 void loop() {
   
@@ -393,19 +395,7 @@ void loop() {
    
   if (intervaltime > period)
   {
-   Serial.println("envoie vers domoticz");
-    String TempC=temperature();
-    //if TempC 
-   SendToDomoticz(TempIdx, "0", TempC );
-   int digit1in=digitalRead(41);
-   SendToDomoticz(Din1Idx, String(digit1in), "0");
-   int digit2in=digitalRead(42);
-   SendToDomoticz(Din2Idx, String(digit2in), "0");
-   int digit3in=digitalRead(43);
-   SendToDomoticz(Din3Idx, String(digit3in), "0");
-   int digit4in=digitalRead(44);
-   SendToDomoticz(Din4Idx, String(digit4in), "0");
-
+   HeartBeat();
    old_time = new_time;
     
   }
@@ -413,5 +403,7 @@ void loop() {
   // listen for incoming clients
   receivedata();
 }
+
+
 
 
